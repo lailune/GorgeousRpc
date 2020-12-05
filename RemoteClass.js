@@ -5,7 +5,7 @@ const {ERROR_TIMEOUT} = require('./Errors')
 /**
  * Класс асинхронного вызова методов, где требуется ожидание результата
  */
-class AsyncRPC extends EventEmitter {
+class RemoteClass extends EventEmitter {
     constructor(timeout = 30000) {
 
         super();
@@ -38,10 +38,10 @@ class AsyncRPC extends EventEmitter {
 
     /**
      * Вызвать метод с таймаутом
-     * @param namespace
-     * @param method
-     * @param params
-     * @returns {Promise<unknown>}
+     * @param {string} namespace
+     * @param {string} method
+     * @param {object|array} params
+     * @returns {Promise<*>}
      */
     callMethod(namespace, method, params) {
         let callId = String(Math.round(Math.random() * 10000000)) + String(Math.round(Math.random() * 10000000));
@@ -65,6 +65,7 @@ class AsyncRPC extends EventEmitter {
             }
 
             this._callHeap[callId].timeoutTimer = setTimeout(() => {
+                this.emit('timeout', this._callHeap[callId]);
                 this._callHeap[callId].callback(ERROR_TIMEOUT);
             }, this._timeout);
 
@@ -77,11 +78,23 @@ class AsyncRPC extends EventEmitter {
      * Отменить вызов
      * @param {string} callId
      */
-    cancel(callId){
+    cancel(callId) {
         clearTimeout(this._callHeap[callId].timeoutTimer);
         delete this._callHeap[callId];
         this._callHeapIds = this._callHeapIds.filter((aCallId) => aCallId !== callId);
     }
+
+
+    /**
+     * Выполнить ожидающий метод
+     * @param callId
+     * @param error
+     * @param result
+     * @returns {Promise<void>}
+     */
+    async resolveCallback(callId, error, result){
+       return await (this._callHeap[callId].callback(error, result));
+    }
 }
 
-module.exports = AsyncRPC;
+module.exports = RemoteClass;
